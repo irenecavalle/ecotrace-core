@@ -565,10 +565,11 @@ Branches: `main` · `develop` · `feature/*` · `hotfix/*`
 
 | Name | Role | Focus Area |
 |---|---|---|
-| [Team Member 1] | ML Lead | U-Net deforestation model, GEE pipeline |
-| [Team Member 2] | Data Engineer | Preprocessing, DVC, cloud masking |
-| [Team Member 3] | Full-Stack | Dashboard, API, deployment |
-| [Team Member 4] | Business / PM | Stakeholder validation, CSRD alignment |
+| Irene Cavalle | ML Lead | U-Net deforestation model, GEE pipeline |
+| Gabi | Data Engineer | Preprocessing, DVC, cloud masking |
+| Adam | Full-Stack | Dashboard, API, deployment |
+| Lucia Pursals | Business / PM | Stakeholder validation, CSRD alignment |
+| Lucia Tortajada | Research & Data | Model validation, EcoScore methodology |
 
 ---
 
