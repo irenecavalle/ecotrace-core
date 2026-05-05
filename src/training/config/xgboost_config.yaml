@@ -1,0 +1,41 @@
+# XGBoost Water Stress Classification Configuration
+
+model:
+  name: "xgboost_water_stress"
+  n_classes: 4
+  objective: "multi:softmax"
+
+xgboost_params:
+  n_estimators: 200
+  max_depth: 7
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_weight: 1
+  gamma: 0
+  reg_alpha: 0
+  reg_lambda: 1.0
+  scale_pos_weight: 1.0
+  random_state: 42
+
+training:
+  early_stopping_rounds: 20
+  eval_metric: "mlogloss"
+  eval_set_fraction: 0.2
+  verbose: 10
+
+data:
+  feature_dim: 96  # 8 indices × 12 months
+  normalize: true
+  normalization_method: "standardize"
+
+class_weights:
+  None: 1.0
+  Low: 1.5
+  Medium: 2.0
+  High: 3.0
+
+logging:
+  mlflow_enabled: true
+  save_shap: true
+  feature_importance_plot: true

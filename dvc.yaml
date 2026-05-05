@@ -1,0 +1,63 @@
+stages:
+  download:
+    cmd: python src/ingestion/download_sentinel2.py --aoi all --start 2019-01 --end 2024-12
+    deps:
+      - src/ingestion/download_sentinel2.py
+      - src/ingestion/gee_auth.py
+    outs:
+      - data/raw/sentinel2:
+          type: dir
+    params:
+      - download.aoi
+      - download.start_date
+      - download.end_date
+
+  preprocess:
+    cmd: |
+      python src/preprocessing/cloud_mask.py --input data/raw/sentinel2/ --output data/processed/masked/ && \
+      python src/preprocessing/monthly_composite.py --input data/processed/masked/ --output data/processed/composites/ && \
+      python src/preprocessing/compute_indices.py --input data/processed/composites/ --output data/processed/indices/ && \
+      python src/preprocessing/patch_generator.py --suppliers data/suppliers/suppliers.csv --imagery data/processed/indices/ --output data/processed/patches/ --radius 10
+    deps:
+      - data/raw/sentinel2
+      - data/suppliers/suppliers.csv
+      - src/preprocessing/cloud_mask.py
+      - src/preprocessing/monthly_composite.py
+      - src/preprocessing/compute_indices.py
+      - src/preprocessing/patch_generator.py
+    outs:
+      - data/processed/patches:
+          type: dir
+    params:
+      - preprocess.cloud_threshold
+      - preprocess.patch_size
+
+  train:
+    cmd: |
+      python src/training/train_unet.py --config src/training/config/unet_config.yaml && \
+      python src/training/train_xgboost.py --config src/training/config/xgboost_config.yaml && \
+      python src/training/train_cnn.py --config src/training/config/cnn_config.yaml
+    deps:
+      - data/processed/patches
+      - src/training/train_unet.py
+      - src/training/train_xgboost.py
+      - src/training/train_cnn.py
+      - src/training/config/unet_config.yaml
+      - src/training/config/xgboost_config.yaml
+      - src/training/config/cnn_config.yaml
+    outs:
+      - models/unet_deforestation_v1.pt
+      - models/xgboost_water_stress_v1.pkl
+      - models/cnn_pollution_v1.pt
+
+  inference:
+    cmd: python src/inference/run_inference.py --input data/suppliers/suppliers.csv --output results/scores.json
+    deps:
+      - data/suppliers/suppliers.csv
+      - data/processed/indices
+      - models/unet_deforestation_v1.pt
+      - models/xgboost_water_stress_v1.pkl
+      - models/cnn_pollution_v1.pt
+      - src/inference/run_inference.py
+    outs:
+      - results/scores.json

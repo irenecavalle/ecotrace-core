@@ -1,0 +1,42 @@
+# CNN Pollution Regression Configuration
+
+model:
+  name: "cnn_pollution_regression"
+  in_channels: 4  # NDWI, RE-ChlI, turbidity, NIR
+  out_channels: 1  # Continuous anomaly score
+  dropout: 0.3
+  batch_norm: true
+
+training:
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.0005
+  weight_decay: 1.0e-5
+  optimizer: "adam"
+  loss_function: "mse"
+
+data:
+  patch_size: 64
+  augmentation: true
+  augmentation_params:
+    rotation: 45
+    flip: true
+    gaussian_noise: 0.01
+    brightness: 0.15
+
+validation:
+  early_stopping: true
+  patience: 15
+  monitor_metric: "val_pearson_r"
+  mode: "max"
+
+checkpointing:
+  save_best_only: true
+  save_interval: 1
+  checkpoint_dir: "models/"
+
+logging:
+  mlflow_enabled: true
+  log_interval: 50
+  tensorboard: true
+  tensorboard_dir: "runs/cnn_pollution"

@@ -1,0 +1,7 @@
+supplier_id,name,country,latitude,longitude,category
+SUP001,Mehran Textile Mills,PK,31.418,73.079,Cotton weaving
+SUP002,Yangtze Fiber Co.,CN,32.061,118.796,Polyester
+SUP003,Green Stitch Ltd.,BD,23.990,90.411,Garment assembly
+SUP004,Karachi Denim House,PK,24.860,67.010,Denim
+SUP005,Zhejiang Natural Fabrics,CN,30.274,120.155,Linen blends
+SUP006,Dhaka Knits International,BD,23.810,90.412,Knitwear
