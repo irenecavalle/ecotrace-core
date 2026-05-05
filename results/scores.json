@@ -1,0 +1,50 @@
+{
+  "SUP001": {
+    "ecoscore": 28,
+    "deforestation_risk": 22,
+    "water_stress": 31,
+    "pollution_proxy": 35,
+    "status": "CRITICAL",
+    "updated": "2025-05-01"
+  },
+  "SUP002": {
+    "ecoscore": 65,
+    "deforestation_risk": 18,
+    "water_stress": 25,
+    "pollution_proxy": 28,
+    "status": "REVIEW",
+    "updated": "2025-05-01"
+  },
+  "SUP003": {
+    "ecoscore": 45,
+    "deforestation_risk": 35,
+    "water_stress": 40,
+    "pollution_proxy": 32,
+    "status": "REVIEW",
+    "updated": "2025-05-01"
+  },
+  "SUP004": {
+    "ecoscore": 22,
+    "deforestation_risk": 42,
+    "water_stress": 48,
+    "pollution_proxy": 55,
+    "status": "CRITICAL",
+    "updated": "2025-05-01"
+  },
+  "SUP005": {
+    "ecoscore": 72,
+    "deforestation_risk": 12,
+    "water_stress": 15,
+    "pollution_proxy": 18,
+    "status": "COMPLIANT",
+    "updated": "2025-05-01"
+  },
+  "SUP006": {
+    "ecoscore": 58,
+    "deforestation_risk": 25,
+    "water_stress": 32,
+    "pollution_proxy": 36,
+    "status": "REVIEW",
+    "updated": "2025-05-01"
+  }
+}
