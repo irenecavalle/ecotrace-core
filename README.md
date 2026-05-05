@@ -167,7 +167,7 @@ ecotrace/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/ecotrace-ai/ecotrace-core.git
+git clone https://github.com/irenecavalle/ecotrace-core.git
 cd ecotrace-core
 
 # 2. Create conda environment
