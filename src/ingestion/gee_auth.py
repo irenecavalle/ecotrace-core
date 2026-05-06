@@ -75,22 +75,23 @@ def authenticate() -> dict:
 
     try:
         with open(key_path) as f:
-            key_data = json.load(f)
+            key_json = f.read()
+            key_data = json.loads(key_json)
 
         service_account_email = key_data.get('client_email')
         project_id = key_data.get('project_id')
 
-        logger.info(f"🔑 Authenticating with service account...")
+        logger.info(f"[AUTH] Authenticating with service account...")
         logger.info(f"   Email: {service_account_email}")
         logger.info(f"   Project: {project_id}")
 
         credentials = ee.ServiceAccountCredentials(
             email=service_account_email,
-            key_data=key_data
+            key_data=key_json
         )
         ee.Initialize(credentials)
 
-        logger.info(f"✅ Earth Engine authentication successful")
+        logger.info(f"[OK] Earth Engine authentication successful")
 
         return {
             'email': service_account_email,
@@ -128,7 +129,7 @@ def test_connection() -> bool:
         True if connection successful, False otherwise
     """
     try:
-        logger.info("🧪 Testing Earth Engine connection...")
+        logger.info("[TEST] Testing Earth Engine connection...")
 
         # Test with Sentinel-2 collection
         s2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
@@ -136,11 +137,11 @@ def test_connection() -> bool:
             .limit(1)
 
         count = s2.size().getInfo()
-        logger.info(f"✅ Connection successful (found {count} S2 images for Jan 2023)")
+        logger.info(f"[OK] Connection successful (found {count} S2 images for Jan 2023)")
         return True
 
     except Exception as e:
-        logger.error(f"❌ Connection test failed: {e}")
+        logger.error(f"[ERR] Connection test failed: {e}")
         return False
 
 
@@ -185,10 +186,10 @@ if __name__ == "__main__":
         logger.info(f"  Project: {info['project_id']}")
 
         if test_connection():
-            logger.info("\n✅ All systems operational!")
+            logger.info("\n[OK] All systems operational!")
         else:
-            logger.error("\n❌ Connection test failed")
+            logger.error("\n[ERR] Connection test failed")
 
     except Exception as e:
-        logger.error(f"\n❌ Authentication failed: {e}")
+        logger.error(f"\n[ERR] Authentication failed: {e}")
         exit(1)

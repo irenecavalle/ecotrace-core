@@ -1,50 +1,411 @@
 {
-  "SUP001": {
-    "ecoscore": 28,
-    "deforestation_risk": 22,
-    "water_stress": 31,
-    "pollution_proxy": 35,
-    "status": "CRITICAL",
-    "updated": "2025-05-01"
+  "metadata": {
+    "version": "1.0",
+    "description": "EcoScore sustainability assessments for suppliers",
+    "total_suppliers": 40,
+    "monitored_count": 25,
+    "marketplace_count": 15,
+    "zones": [
+      "pakistan",
+      "china",
+      "bangladesh"
+    ]
   },
-  "SUP002": {
-    "ecoscore": 65,
-    "deforestation_risk": 18,
-    "water_stress": 25,
-    "pollution_proxy": 28,
-    "status": "REVIEW",
-    "updated": "2025-05-01"
+  "zone_scores": {
+    "pakistan": {
+      "zone": "pakistan",
+      "ecoscore": 31.85,
+      "status": "CRITICAL",
+      "deforestation_risk": 55.26,
+      "water_stress": 68.81,
+      "pollution_proxy": 87.84,
+      "ndvi": 0.2432,
+      "ndwi": 0.0171,
+      "ndvi_trend": 0.012897
+    },
+    "china": {
+      "zone": "china",
+      "ecoscore": 43.12,
+      "status": "REVIEW",
+      "deforestation_risk": 53.0,
+      "water_stress": 58.07,
+      "pollution_proxy": 61.4,
+      "ndvi": 0.3679,
+      "ndwi": 0.1704,
+      "ndvi_trend": -0.00698
+    },
+    "bangladesh": {
+      "zone": "bangladesh",
+      "ecoscore": 54.13,
+      "status": "REVIEW",
+      "deforestation_risk": 28.84,
+      "water_stress": 57.89,
+      "pollution_proxy": 56.3,
+      "ndvi": 0.4748,
+      "ndwi": 0.1729,
+      "ndvi_trend": 0.087124
+    }
   },
-  "SUP003": {
-    "ecoscore": 45,
-    "deforestation_risk": 35,
-    "water_stress": 40,
-    "pollution_proxy": 32,
-    "status": "REVIEW",
-    "updated": "2025-05-01"
-  },
-  "SUP004": {
-    "ecoscore": 22,
-    "deforestation_risk": 42,
-    "water_stress": 48,
-    "pollution_proxy": 55,
-    "status": "CRITICAL",
-    "updated": "2025-05-01"
-  },
-  "SUP005": {
-    "ecoscore": 72,
-    "deforestation_risk": 12,
-    "water_stress": 15,
-    "pollution_proxy": 18,
-    "status": "COMPLIANT",
-    "updated": "2025-05-01"
-  },
-  "SUP006": {
-    "ecoscore": 58,
-    "deforestation_risk": 25,
-    "water_stress": 32,
-    "pollution_proxy": 36,
-    "status": "REVIEW",
-    "updated": "2025-05-01"
-  }
+  "suppliers": [
+    {
+      "id": "MON-001",
+      "name": "Indus Delta Textiles",
+      "zone": "pakistan",
+      "type": "monitored",
+      "ecoscore": 27.47,
+      "status": "CRITICAL",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-002",
+      "name": "Sindh Agricultural Co.",
+      "zone": "pakistan",
+      "type": "monitored",
+      "ecoscore": 36.11,
+      "status": "CRITICAL",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-003",
+      "name": "Punjab Cotton Mills",
+      "zone": "pakistan",
+      "type": "monitored",
+      "ecoscore": 32.83,
+      "status": "CRITICAL",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-004",
+      "name": "Karachi Export Group",
+      "zone": "pakistan",
+      "type": "monitored",
+      "ecoscore": 30.83,
+      "status": "CRITICAL",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-005",
+      "name": "Pakistan Fabrics Ltd",
+      "zone": "pakistan",
+      "type": "monitored",
+      "ecoscore": 24.19,
+      "status": "CRITICAL",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-006",
+      "name": "Yangtze River Mills",
+      "zone": "china",
+      "type": "monitored",
+      "ecoscore": 35.46,
+      "status": "CRITICAL",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-007",
+      "name": "Zhejiang Textile Co.",
+      "zone": "china",
+      "type": "monitored",
+      "ecoscore": 33.99,
+      "status": "CRITICAL",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-008",
+      "name": "Jiangsu Green Fabrics",
+      "zone": "china",
+      "type": "monitored",
+      "ecoscore": 46.11,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-009",
+      "name": "Shanghai Processing",
+      "zone": "china",
+      "type": "monitored",
+      "ecoscore": 42.14,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-010",
+      "name": "Wuhan Dye Works",
+      "zone": "china",
+      "type": "monitored",
+      "ecoscore": 43.74,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-011",
+      "name": "Dhaka Garment Hub",
+      "zone": "bangladesh",
+      "type": "monitored",
+      "ecoscore": 44.44,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-012",
+      "name": "Bangladesh Cotton Ind.",
+      "zone": "bangladesh",
+      "type": "monitored",
+      "ecoscore": 58.68,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-013",
+      "name": "Chittagong Export Mills",
+      "zone": "bangladesh",
+      "type": "monitored",
+      "ecoscore": 56.62,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-014",
+      "name": "Rajshahi Fabrics",
+      "zone": "bangladesh",
+      "type": "monitored",
+      "ecoscore": 47.32,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-015",
+      "name": "Narayanganj Spinners",
+      "zone": "bangladesh",
+      "type": "monitored",
+      "ecoscore": 46.86,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-016",
+      "name": "Delta Farming Pakistan",
+      "zone": "pakistan",
+      "type": "monitored",
+      "ecoscore": 24.6,
+      "status": "CRITICAL",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-017",
+      "name": "Ganges Agricultural",
+      "zone": "bangladesh",
+      "type": "monitored",
+      "ecoscore": 48.69,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-018",
+      "name": "Yangtze Valley Farms",
+      "zone": "china",
+      "type": "monitored",
+      "ecoscore": 40.99,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-019",
+      "name": "Pakistan Rice Mills",
+      "zone": "pakistan",
+      "type": "monitored",
+      "ecoscore": 28.33,
+      "status": "CRITICAL",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-020",
+      "name": "Bangladesh Sugar Corp",
+      "zone": "bangladesh",
+      "type": "monitored",
+      "ecoscore": 48.5,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-021",
+      "name": "Central China Grain",
+      "zone": "china",
+      "type": "monitored",
+      "ecoscore": 42.3,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-022",
+      "name": "Indus Fisheries Co.",
+      "zone": "pakistan",
+      "type": "monitored",
+      "ecoscore": 23.94,
+      "status": "CRITICAL",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-023",
+      "name": "Ganges Fisheries Ltd",
+      "zone": "bangladesh",
+      "type": "monitored",
+      "ecoscore": 48.51,
+      "status": "REVIEW",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-024",
+      "name": "Yangtze Aquaculture",
+      "zone": "china",
+      "type": "monitored",
+      "ecoscore": 38.62,
+      "status": "CRITICAL",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MON-025",
+      "name": "Pakistan Leather Works",
+      "zone": "pakistan",
+      "type": "monitored",
+      "ecoscore": 28.69,
+      "status": "CRITICAL",
+      "audit_frequency": "quarterly"
+    },
+    {
+      "id": "MKT-001",
+      "name": "Eco Traders Asia",
+      "zone": "bangladesh",
+      "type": "marketplace",
+      "ecoscore": 60.91,
+      "status": "REVIEW",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-002",
+      "name": "Green Supply Net",
+      "zone": "pakistan",
+      "type": "marketplace",
+      "ecoscore": 29.85,
+      "status": "CRITICAL",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-003",
+      "name": "Sustainable Import Co.",
+      "zone": "china",
+      "type": "marketplace",
+      "ecoscore": 45.83,
+      "status": "REVIEW",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-004",
+      "name": "Fair Trade Group",
+      "zone": "bangladesh",
+      "type": "marketplace",
+      "ecoscore": 58.02,
+      "status": "REVIEW",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-005",
+      "name": "EcoLogistics Ltd",
+      "zone": "pakistan",
+      "type": "marketplace",
+      "ecoscore": 27.55,
+      "status": "CRITICAL",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-006",
+      "name": "Clean Sourcing Hub",
+      "zone": "china",
+      "type": "marketplace",
+      "ecoscore": 47.23,
+      "status": "REVIEW",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-007",
+      "name": "Responsible Retailers",
+      "zone": "bangladesh",
+      "type": "marketplace",
+      "ecoscore": 51.69,
+      "status": "REVIEW",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-008",
+      "name": "Ethical Trading Co.",
+      "zone": "pakistan",
+      "type": "marketplace",
+      "ecoscore": 27.83,
+      "status": "CRITICAL",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-009",
+      "name": "Green Products LLC",
+      "zone": "china",
+      "type": "marketplace",
+      "ecoscore": 52.35,
+      "status": "REVIEW",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-010",
+      "name": "Sustainability Partners",
+      "zone": "bangladesh",
+      "type": "marketplace",
+      "ecoscore": 63.61,
+      "status": "REVIEW",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-011",
+      "name": "Organic Sourcing",
+      "zone": "pakistan",
+      "type": "marketplace",
+      "ecoscore": 38.98,
+      "status": "CRITICAL",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-012",
+      "name": "Carbon Neutral Trade",
+      "zone": "china",
+      "type": "marketplace",
+      "ecoscore": 42.69,
+      "status": "REVIEW",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-013",
+      "name": "Water Efficient Farms",
+      "zone": "bangladesh",
+      "type": "marketplace",
+      "ecoscore": 50.6,
+      "status": "REVIEW",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-014",
+      "name": "Zero Waste Producers",
+      "zone": "pakistan",
+      "type": "marketplace",
+      "ecoscore": 37.11,
+      "status": "CRITICAL",
+      "audit_frequency": "annual"
+    },
+    {
+      "id": "MKT-015",
+      "name": "Climate Smart Supply",
+      "zone": "china",
+      "type": "marketplace",
+      "ecoscore": 44.72,
+      "status": "REVIEW",
+      "audit_frequency": "annual"
+    }
+  ]
 }
