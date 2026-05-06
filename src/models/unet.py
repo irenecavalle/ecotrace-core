@@ -54,79 +54,64 @@ class DecoderBlock(nn.Module):
         """
         super().__init__()
         self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)
-        self.conv_block = ConvBlock(in_channels + skip_channels, out_channels)
+        # Use 1x1 conv to adjust skip connection channels if needed
+        self.skip_conv = nn.Conv2d(skip_channels, in_channels, kernel_size=1) if skip_channels != in_channels else nn.Identity()
+        self.conv_block = ConvBlock(in_channels * 2, out_channels)
 
     def forward(self, x: torch.Tensor, skip: torch.Tensor) -> torch.Tensor:
         x = self.upsample(x)
+        skip = self.skip_conv(skip)
         x = torch.cat([x, skip], dim=1)
         x = self.conv_block(x)
         return x
 
 
 class UNet(nn.Module):
-    """U-Net deforestation detection model with ResNet-50 encoder."""
+    """U-Net deforestation detection model with simplified architecture."""
 
-    def __init__(self, in_channels: int = 12, out_channels: int = 2):
+    def __init__(self, in_channels: int = 12, out_channels: int = 1):
         """
         Initialize U-Net model.
 
         Args:
             in_channels: Number of input channels (12 for bi-temporal S2)
-            out_channels: Number of output classes (2 for binary segmentation)
+            out_channels: Number of output channels (1 for binary segmentation)
         """
         super().__init__()
 
-        # Encoder: ResNet-50
-        resnet50 = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
+        # Simple encoder-decoder U-Net
+        self.enc1 = ConvBlock(in_channels, 64)
+        self.pool1 = nn.MaxPool2d(2)
 
-        # Adapt first conv layer for 12-channel input
-        original_conv = resnet50.conv1
-        self.initial_conv = nn.Conv2d(
-            in_channels,
-            64,
-            kernel_size=7,
-            stride=2,
-            padding=3,
-            bias=False
-        )
-        # Initialize with mean of pre-trained weights (average across input channels)
-        with torch.no_grad():
-            weight = original_conv.weight.mean(dim=1, keepdim=True)
-            self.initial_conv.weight.copy_(weight.repeat(1, in_channels // 3, 1, 1))
+        self.enc2 = ConvBlock(64, 128)
+        self.pool2 = nn.MaxPool2d(2)
 
-        self.bn1 = resnet50.bn1
-        self.relu = resnet50.relu
-        self.maxpool = resnet50.maxpool
+        self.enc3 = ConvBlock(128, 256)
+        self.pool3 = nn.MaxPool2d(2)
 
-        # ResNet layers (encoder)
-        self.layer1 = resnet50.layer1  # 64 channels
-        self.layer2 = resnet50.layer2  # 256 channels
-        self.layer3 = resnet50.layer3  # 512 channels
-        self.layer4 = resnet50.layer4  # 2048 channels
+        self.enc4 = ConvBlock(256, 512)
+        self.pool4 = nn.MaxPool2d(2)
 
-        # Decoder blocks
-        # Layer4 output: (B, 2048, 4, 4)
-        self.decoder4 = DecoderBlock(2048, 512, 512)  # -> (B, 512, 8, 8)
-        self.decoder3 = DecoderBlock(512, 256, 256)   # -> (B, 256, 16, 16)
-        self.decoder2 = DecoderBlock(256, 64, 128)    # -> (B, 128, 32, 32)
-        self.decoder1 = DecoderBlock(128, 64, 64)     # -> (B, 64, 64, 64)
+        # Bottleneck
+        self.bottleneck = ConvBlock(512, 1024)
 
-        # Final classification head
-        self.final_conv = nn.Sequential(
-            nn.Conv2d(64, 32, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, out_channels, kernel_size=1)
-        )
+        # Decoder
+        self.upconv4 = nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2)
+        self.dec4 = ConvBlock(1024, 512)
+
+        self.upconv3 = nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2)
+        self.dec3 = ConvBlock(512, 256)
+
+        self.upconv2 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2)
+        self.dec2 = ConvBlock(256, 128)
+
+        self.upconv1 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2)
+        self.dec1 = ConvBlock(128, 64)
+
+        # Final layer
+        self.final = nn.Conv2d(64, out_channels, kernel_size=1)
 
         self.out_channels = out_channels
-        self._freeze_bn()
-
-    def _freeze_bn(self) -> None:
-        """Freeze batch normalization layers."""
-        for m in self.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                m.eval()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -136,113 +121,78 @@ class UNet(nn.Module):
             x: Input tensor of shape (B, 12, 64, 64)
 
         Returns:
-            Output logits of shape (B, 2, 64, 64)
+            Output logits of shape (B, out_channels, 64, 64)
         """
-        # Encoder
-        e0 = self.initial_conv(x)      # (B, 64, 32, 32)
-        e0 = self.bn1(e0)
-        e0 = self.relu(e0)
-        e0 = self.maxpool(e0)          # (B, 64, 16, 16)
+        # Encoder with skip connections
+        e1 = self.enc1(x)              # (B, 64, 64, 64)
+        p1 = self.pool1(e1)            # (B, 64, 32, 32)
 
-        e1 = self.layer1(e0)           # (B, 64, 16, 16)
-        e2 = self.layer2(e1)           # (B, 256, 8, 8)
-        e3 = self.layer3(e2)           # (B, 512, 4, 4)
-        e4 = self.layer4(e3)           # (B, 2048, 2, 2)
+        e2 = self.enc2(p1)             # (B, 128, 32, 32)
+        p2 = self.pool2(e2)            # (B, 128, 16, 16)
+
+        e3 = self.enc3(p2)             # (B, 256, 16, 16)
+        p3 = self.pool3(e3)            # (B, 256, 8, 8)
+
+        e4 = self.enc4(p3)             # (B, 512, 8, 8)
+        p4 = self.pool4(e4)            # (B, 512, 4, 4)
+
+        # Bottleneck
+        bn = self.bottleneck(p4)       # (B, 1024, 4, 4)
 
         # Decoder with skip connections
-        d4 = self.decoder4(e4, e3)     # (B, 512, 4, 4)
-        d3 = self.decoder3(d4, e2)     # (B, 256, 8, 8)
-        d2 = self.decoder2(d3, e1)     # (B, 128, 16, 16)
-        d1 = self.decoder1(d2, e0)     # (B, 64, 32, 32)
+        up4 = self.upconv4(bn)         # (B, 512, 8, 8)
+        d4 = torch.cat([up4, e4], dim=1)  # (B, 1024, 8, 8)
+        d4 = self.dec4(d4)             # (B, 512, 8, 8)
 
-        # Upsample to original size
-        d1 = F.interpolate(d1, scale_factor=2, mode='bilinear', align_corners=False)  # (B, 64, 64, 64)
+        up3 = self.upconv3(d4)         # (B, 256, 16, 16)
+        d3 = torch.cat([up3, e3], dim=1)  # (B, 512, 16, 16)
+        d3 = self.dec3(d3)             # (B, 256, 16, 16)
+
+        up2 = self.upconv2(d3)         # (B, 128, 32, 32)
+        d2 = torch.cat([up2, e2], dim=1)  # (B, 256, 32, 32)
+        d2 = self.dec2(d2)             # (B, 128, 32, 32)
+
+        up1 = self.upconv1(d2)         # (B, 64, 64, 64)
+        d1 = torch.cat([up1, e1], dim=1)  # (B, 128, 64, 64)
+        d1 = self.dec1(d1)             # (B, 64, 64, 64)
 
         # Final classification
-        output = self.final_conv(d1)   # (B, 2, 64, 64)
+        output = self.final(d1)        # (B, out_channels, 64, 64)
 
         return output
 
     def freeze_encoder(self) -> None:
         """Freeze encoder weights for transfer learning."""
-        # Freeze all encoder layers
-        self.initial_conv.requires_grad_(False)
-        self.bn1.requires_grad_(False)
-        self.layer1.requires_grad_(False)
-        self.layer2.requires_grad_(False)
-        self.layer3.requires_grad_(False)
-        self.layer4.requires_grad_(False)
+        self.enc1.requires_grad_(False)
+        self.enc2.requires_grad_(False)
+        self.enc3.requires_grad_(False)
+        self.enc4.requires_grad_(False)
 
     def unfreeze_encoder(self) -> None:
         """Unfreeze encoder weights for fine-tuning."""
-        self.initial_conv.requires_grad_(True)
-        self.bn1.requires_grad_(True)
-        self.layer1.requires_grad_(True)
-        self.layer2.requires_grad_(True)
-        self.layer3.requires_grad_(True)
-        self.layer4.requires_grad_(True)
-
-    def freeze_decoder(self) -> None:
-        """Freeze decoder weights."""
-        self.decoder4.requires_grad_(False)
-        self.decoder3.requires_grad_(False)
-        self.decoder2.requires_grad_(False)
-        self.decoder1.requires_grad_(False)
-        self.final_conv.requires_grad_(False)
-
-    def unfreeze_decoder(self) -> None:
-        """Unfreeze decoder weights."""
-        self.decoder4.requires_grad_(True)
-        self.decoder3.requires_grad_(True)
-        self.decoder2.requires_grad_(True)
-        self.decoder1.requires_grad_(True)
-        self.final_conv.requires_grad_(True)
-
-    def get_encoder_params(self) -> List[torch.nn.Parameter]:
-        """Get encoder parameters for selective optimization."""
-        params = []
-        for m in [self.initial_conv, self.bn1, self.layer1, self.layer2, self.layer3, self.layer4]:
-            params.extend(m.parameters())
-        return params
-
-    def get_decoder_params(self) -> List[torch.nn.Parameter]:
-        """Get decoder parameters for selective optimization."""
-        params = []
-        for m in [self.decoder4, self.decoder3, self.decoder2, self.decoder1, self.final_conv]:
-            params.extend(m.parameters())
-        return params
+        self.enc1.requires_grad_(True)
+        self.enc2.requires_grad_(True)
+        self.enc3.requires_grad_(True)
+        self.enc4.requires_grad_(True)
 
 
-def create_unet(
-    in_channels: int = 12,
-    out_channels: int = 2,
-    pretrained: bool = True,
-    freeze_encoder: bool = False
-) -> UNet:
+def create_unet(in_channels: int = 12, out_channels: int = 1) -> UNet:
     """
     Factory function to create U-Net model.
 
     Args:
         in_channels: Number of input channels (12 for bi-temporal S2)
-        out_channels: Number of output classes (2 for binary segmentation)
-        pretrained: Whether to use ImageNet pre-trained ResNet-50
-        freeze_encoder: Whether to freeze encoder weights initially
+        out_channels: Number of output channels (1 for binary segmentation)
 
     Returns:
         Initialized U-Net model
     """
-    model = UNet(in_channels=in_channels, out_channels=out_channels)
-
-    if freeze_encoder:
-        model.freeze_encoder()
-
-    return model
+    return UNet(in_channels=in_channels, out_channels=out_channels)
 
 
 if __name__ == "__main__":
-    # Test model creation and forward pass
     print("Creating U-Net model...")
-    model = create_unet()
+    model = create_unet(in_channels=12, out_channels=1)
     print(f"Model created with {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M parameters")
 
     print("\nTesting forward pass...")
@@ -252,13 +202,5 @@ if __name__ == "__main__":
     output = model(x)
     print(f"Output shape: {output.shape}")
     print(f"Output range: [{output.min():.3f}, {output.max():.3f}]")
-
-    # Test encoder freezing
-    print("\nTesting freeze/unfreeze...")
-    model.freeze_encoder()
-    print(f"Encoder frozen: {not model.layer1[0].conv1.weight.requires_grad}")
-
-    model.unfreeze_encoder()
-    print(f"Encoder unfrozen: {model.layer1[0].conv1.weight.requires_grad}")
 
     print("\n✅ Model test complete!")
