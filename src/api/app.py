@@ -1,369 +1,438 @@
 """
-EcoTrace Flask REST API.
+EcoScore Sustainability API
 
-Exposes EcoScore data from inference pipeline for dashboard and external integrations.
-Reads data from results/scores.json and data/suppliers/suppliers_sample.csv.
+Complete Flask API for supplier sustainability monitoring and reporting.
+Provides real-time access to satellite-derived EcoScores and environmental metrics.
+Loads data from results/scores.json on startup.
 """
 
-import logging
 import json
-import csv
-import os
+import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 from datetime import datetime
-from flask import Flask, jsonify, request, g
+from typing import List, Dict, Optional, Any
+
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
+# Initialize Flask app
+app = Flask(__name__)
+CORS(app)
 
-class DataManager:
-    """Manages data loading from results/scores.json and supplier metadata."""
+# Global data storage
+SCORES_DATA = {}
+SUPPLIERS_MAP = {}
+ZONES_MAP = {}
 
-    def __init__(self, scores_file: str = "results/scores.json", suppliers_file: str = "data/suppliers/suppliers_sample.csv"):
-        """
-        Initialize DataManager.
 
-        Args:
-            scores_file: Path to inference results JSON
-            suppliers_file: Path to suppliers CSV metadata
-        """
-        self.scores_file = Path(scores_file)
-        self.suppliers_file = Path(suppliers_file)
-        self._scores_cache = None
-        self._suppliers_cache = None
-        self._load_timestamp = None
+def load_scores_data():
+    """Load scores.json on application startup."""
+    global SCORES_DATA, SUPPLIERS_MAP, ZONES_MAP
 
-    def load_scores(self, force_reload: bool = False) -> Dict:
-        """
-        Load EcoScores from results/scores.json.
+    try:
+        scores_path = Path(__file__).parent.parent.parent / 'results' / 'scores.json'
 
-        Args:
-            force_reload: Force reload even if cached
+        with open(scores_path, 'r') as f:
+            SCORES_DATA = json.load(f)
 
-        Returns:
-            Dictionary mapping supplier_id -> scores
-        """
-        if self._scores_cache is not None and not force_reload:
-            return self._scores_cache
+        SUPPLIERS_MAP = {s['id']: s for s in SCORES_DATA.get('suppliers', [])}
+        ZONES_MAP = SCORES_DATA.get('zone_scores', {})
 
-        if not self.scores_file.exists():
-            logger.warning(f"Scores file not found: {self.scores_file}")
-            return {}
+        logger.info(f"Loaded {len(SUPPLIERS_MAP)} suppliers from {scores_path}")
+        logger.info(f"Loaded {len(ZONES_MAP)} zones")
 
-        try:
-            with open(self.scores_file, 'r') as f:
-                self._scores_cache = json.load(f)
-            self._load_timestamp = datetime.utcnow().isoformat()
-            logger.info(f"Loaded {len(self._scores_cache)} supplier scores")
-            return self._scores_cache
-        except json.JSONDecodeError as e:
-            logger.error(f"Error parsing scores JSON: {e}")
-            return {}
-        except Exception as e:
-            logger.error(f"Error loading scores: {e}")
-            return {}
+        return True
+    except Exception as e:
+        logger.error(f"Failed to load scores data: {e}")
+        return False
 
-    def load_suppliers(self, force_reload: bool = False) -> Dict:
-        """
-        Load supplier metadata from CSV.
 
-        Args:
-            force_reload: Force reload even if cached
+@app.before_request
+def before_request():
+    """Add request metadata."""
+    request.start_time = datetime.utcnow()
 
-        Returns:
-            Dictionary mapping supplier_id -> metadata
-        """
-        if self._suppliers_cache is not None and not force_reload:
-            return self._suppliers_cache
 
-        if not self.suppliers_file.exists():
-            logger.warning(f"Suppliers file not found: {self.suppliers_file}")
-            return {}
+@app.after_request
+def after_request(response):
+    """Add response headers."""
+    response.headers['Content-Type'] = 'application/json'
+    response.headers['API-Version'] = '1.0'
+    return response
 
-        try:
-            self._suppliers_cache = {}
-            with open(self.suppliers_file, 'r') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    supplier_id = row['supplier_id']
-                    self._suppliers_cache[supplier_id] = {
-                        'supplier_id': supplier_id,
-                        'name': row['name'],
-                        'country': row['country'],
-                        'latitude': float(row['latitude']),
-                        'longitude': float(row['longitude']),
-                        'category': row['category']
-                    }
-            logger.info(f"Loaded {len(self._suppliers_cache)} supplier metadata")
-            return self._suppliers_cache
-        except Exception as e:
-            logger.error(f"Error loading suppliers: {e}")
-            return {}
 
-    def get_supplier_full(self, supplier_id: str) -> Optional[Dict]:
-        """
-        Get complete supplier data (metadata + scores).
+# ============================================================================
+# Health & Metadata Endpoints
+# ============================================================================
 
-        Args:
-            supplier_id: Supplier identifier
+@app.route('/health', methods=['GET'])
+def health():
+    """Health check endpoint."""
+    return jsonify({
+        'status': 'healthy',
+        'service': 'EcoScore API',
+        'version': '1.0',
+        'timestamp': datetime.utcnow().isoformat(),
+        'suppliers_loaded': len(SUPPLIERS_MAP),
+        'zones_loaded': len(ZONES_MAP)
+    }), 200
 
-        Returns:
-            Combined supplier dictionary or None if not found
-        """
-        suppliers = self.load_suppliers()
-        scores = self.load_scores()
 
-        if supplier_id not in suppliers or supplier_id not in scores:
-            return None
+@app.route('/api/v1/metadata', methods=['GET'])
+def metadata():
+    """Get API metadata and available resources."""
+    return jsonify({
+        'api': 'EcoScore Sustainability API',
+        'version': '1.0',
+        'description': 'Real-time supplier sustainability monitoring based on Sentinel-2 satellite data',
+        'data_source': 'Sentinel-2 L2A with NDVI/NDWI indices',
+        'update_frequency': 'Monthly',
+        'zones': list(ZONES_MAP.keys()),
+        'total_suppliers': len(SUPPLIERS_MAP),
+        'monitored_suppliers': len([s for s in SUPPLIERS_MAP.values() if s['type'] == 'monitored']),
+        'marketplace_suppliers': len([s for s in SUPPLIERS_MAP.values() if s['type'] == 'marketplace']),
+        'endpoints': {
+            'suppliers': '/api/v1/suppliers',
+            'supplier_detail': '/api/v1/suppliers/<id>',
+            'supplier_score': '/api/v1/suppliers/<id>/score',
+            'marketplace': '/api/v1/marketplace',
+            'alerts': '/api/v1/alerts',
+            'export_csrd': '/api/v1/export/csrd'
+        }
+    }), 200
 
-        supplier = suppliers[supplier_id].copy()
-        supplier.update(scores[supplier_id])
-        supplier['eo_date'] = self._load_timestamp or scores[supplier_id].get('updated', '')
-        supplier['satellite'] = 'Sentinel-2 L2A'
-        supplier['confidence'] = 0.91  # Default confidence from README
 
-        return supplier
+# ============================================================================
+# Monitored Suppliers Endpoints
+# ============================================================================
 
-    def get_all_suppliers(self) -> List[Dict]:
-        """Get all suppliers with scores."""
-        suppliers = self.load_suppliers()
-        scores = self.load_scores()
+@app.route('/api/v1/suppliers', methods=['GET'])
+def get_suppliers():
+    """Get all monitored suppliers."""
+    try:
+        monitored = [s for s in SUPPLIERS_MAP.values() if s['type'] == 'monitored']
 
-        all_suppliers = []
-        for supplier_id, metadata in suppliers.items():
-            if supplier_id in scores:
-                supplier = metadata.copy()
-                supplier.update(scores[supplier_id])
-                all_suppliers.append(supplier)
+        return jsonify({
+            'count': len(monitored),
+            'suppliers': monitored,
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        logger.error(f"Error retrieving suppliers: {e}")
+        return jsonify({'error': str(e)}), 500
 
-        return all_suppliers
 
-    def filter_suppliers(
-        self,
-        suppliers: List[Dict],
-        status: Optional[str] = None,
-        limit: int = 50,
-        offset: int = 0
-    ) -> Tuple[List[Dict], int]:
-        """
-        Filter and paginate suppliers.
+@app.route('/api/v1/suppliers/<supplier_id>', methods=['GET'])
+def get_supplier(supplier_id):
+    """Get single supplier full detail by ID."""
+    try:
+        supplier = SUPPLIERS_MAP.get(supplier_id)
 
-        Args:
-            suppliers: List of supplier dictionaries
-            status: Filter by status (COMPLIANT, REVIEW, CRITICAL)
-            limit: Results per page
-            offset: Pagination offset
+        if not supplier:
+            return jsonify({
+                'error': f'Supplier {supplier_id} not found',
+                'available_ids': list(SUPPLIERS_MAP.keys())[:10]
+            }), 404
 
-        Returns:
-            Tuple of (filtered_suppliers, total_count)
-        """
-        # Filter by status
-        if status:
-            suppliers = [s for s in suppliers if s.get('status') == status]
+        zone_data = ZONES_MAP.get(supplier['zone'], {})
 
-        total = len(suppliers)
+        return jsonify({
+            'supplier': supplier,
+            'zone': {
+                'name': supplier['zone'],
+                'ecoscore': zone_data.get('ecoscore'),
+                'status': zone_data.get('status'),
+                'ndvi': zone_data.get('ndvi'),
+                'ndwi': zone_data.get('ndwi')
+            },
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        logger.error(f"Error retrieving supplier {supplier_id}: {e}")
+        return jsonify({'error': str(e)}), 500
 
-        # Paginate
-        suppliers = suppliers[offset:offset + limit]
 
-        return suppliers, total
+@app.route('/api/v1/suppliers/<supplier_id>/score', methods=['GET'])
+def get_supplier_score(supplier_id):
+    """Get supplier EcoScore and risk components."""
+    try:
+        supplier = SUPPLIERS_MAP.get(supplier_id)
 
-    def generate_alerts(self) -> List[Dict]:
-        """
-        Generate alerts from low-scoring suppliers.
+        if not supplier:
+            return jsonify({'error': f'Supplier {supplier_id} not found'}), 404
 
-        Returns:
-            List of alert dictionaries
-        """
-        suppliers = self.get_all_suppliers()
+        zone_data = ZONES_MAP.get(supplier['zone'], {})
+
+        return jsonify({
+            'supplier_id': supplier_id,
+            'name': supplier['name'],
+            'ecoscore': supplier.get('ecoscore'),
+            'status': supplier.get('status'),
+            'deforestation_risk': zone_data.get('deforestation_risk'),
+            'water_stress': zone_data.get('water_stress'),
+            'pollution_proxy': zone_data.get('pollution_proxy'),
+            'confidence': 0.85,
+            'eo_date': '2024-05-06',
+            'ndvi_trend': zone_data.get('ndvi_trend'),
+            'audit_frequency': supplier.get('audit_frequency'),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        logger.error(f"Error retrieving score for {supplier_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# Marketplace Suppliers Endpoints
+# ============================================================================
+
+@app.route('/api/v1/marketplace', methods=['GET'])
+def get_marketplace():
+    """Get marketplace suppliers with optional filtering."""
+    try:
+        marketplace = [s for s in SUPPLIERS_MAP.values() if s['type'] == 'marketplace']
+
+        min_score = request.args.get('min_score', type=float)
+        zone = request.args.get('zone', type=str)
+
+        if min_score is not None:
+            marketplace = [s for s in marketplace if s.get('ecoscore', 0) >= min_score]
+
+        if zone:
+            marketplace = [s for s in marketplace if s.get('zone') == zone.lower()]
+
+        return jsonify({
+            'count': len(marketplace),
+            'filters': {
+                'min_score': min_score,
+                'zone': zone
+            },
+            'suppliers': marketplace,
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        logger.error(f"Error retrieving marketplace suppliers: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# Alerts & Monitoring Endpoints
+# ============================================================================
+
+@app.route('/api/v1/alerts', methods=['GET'])
+def get_alerts():
+    """Get all critical status suppliers as alerts."""
+    try:
+        critical_suppliers = [s for s in SUPPLIERS_MAP.values() if s.get('status') == 'CRITICAL']
+
         alerts = []
-        alert_id_counter = 1
+        for supplier in critical_suppliers:
+            zone_data = ZONES_MAP.get(supplier['zone'], {})
 
-        for supplier in suppliers:
-            ecoscore = supplier.get('ecoscore', 50)
-            status = supplier.get('status', 'UNKNOWN')
+            deforest_risk = zone_data.get('deforestation_risk', 0)
+            water_stress = zone_data.get('water_stress', 0)
+            pollution = zone_data.get('pollution_proxy', 0)
 
-            if status == 'CRITICAL':
-                if supplier.get('deforestation_risk', 0) > 30:
-                    alerts.append({
-                        'alert_id': f'ALT{alert_id_counter:03d}',
-                        'supplier_id': supplier['supplier_id'],
-                        'supplier_name': supplier['name'],
-                        'severity': 'CRITICAL',
-                        'title': 'Critical deforestation risk detected',
-                        'message': f"Deforestation risk score: {supplier.get('deforestation_risk', 0)}/100",
-                        'created': datetime.utcnow().isoformat(),
-                        'resolved': False
-                    })
-                    alert_id_counter += 1
+            risks = {
+                'deforestation': deforest_risk,
+                'water_stress': water_stress,
+                'pollution': pollution
+            }
 
-                if supplier.get('water_stress', 0) > 30:
-                    alerts.append({
-                        'alert_id': f'ALT{alert_id_counter:03d}',
-                        'supplier_id': supplier['supplier_id'],
-                        'supplier_name': supplier['name'],
-                        'severity': 'CRITICAL',
-                        'title': 'Critical water stress detected',
-                        'message': f"Water stress score: {supplier.get('water_stress', 0)}/100",
-                        'created': datetime.utcnow().isoformat(),
-                        'resolved': False
-                    })
-                    alert_id_counter += 1
+            alert_type = max(risks, key=risks.get)
+            alert_descriptions = {
+                'deforestation': f'Vegetation loss detected (trend: {zone_data.get("ndvi_trend", 0):.4f})',
+                'water_stress': f'Critical water stress: NDWI = {zone_data.get("ndwi", 0):.4f}',
+                'pollution': f'Environmental degradation detected in {supplier["zone"]} region'
+            }
 
-            elif status == 'REVIEW':
-                alerts.append({
-                    'alert_id': f'ALT{alert_id_counter:03d}',
-                    'supplier_id': supplier['supplier_id'],
-                    'supplier_name': supplier['name'],
-                    'severity': 'WARNING',
-                    'title': 'Review required',
-                    'message': f"EcoScore {ecoscore}/100 - Environmental risks require review",
-                    'created': datetime.utcnow().isoformat(),
-                    'resolved': False
-                })
-                alert_id_counter += 1
-
-        return alerts
-
-    def get_csrd_export(self) -> Dict:
-        """
-        Generate CSRD-compliant export.
-
-        Returns:
-            CSRD-formatted export dictionary
-        """
-        suppliers = self.get_all_suppliers()
-
-        # Compute summary statistics
-        compliant = sum(1 for s in suppliers if s.get('status') == 'COMPLIANT')
-        review = sum(1 for s in suppliers if s.get('status') == 'REVIEW')
-        critical = sum(1 for s in suppliers if s.get('status') == 'CRITICAL')
-
-        csrd_suppliers = []
-        for supplier in suppliers:
-            csrd_suppliers.append({
-                'supplier_id': supplier['supplier_id'],
+            alerts.append({
+                'supplier_id': supplier['id'],
                 'name': supplier['name'],
-                'location': {
-                    'country': supplier['country'],
-                    'latitude': supplier['latitude'],
-                    'longitude': supplier['longitude']
-                },
-                'environmental_risks': {
-                    'deforestation_risk': supplier.get('deforestation_risk', 0),
-                    'water_stress': supplier.get('water_stress', 0),
-                    'pollution': supplier.get('pollution_proxy', 0)
-                },
-                'ecoscore': supplier.get('ecoscore', 0),
-                'compliance_status': supplier.get('status', 'UNKNOWN'),
-                'evidence': 'Satellite monitoring Jan 2019 - Dec 2024'
+                'zone': supplier['zone'],
+                'alert_type': alert_type,
+                'description': alert_descriptions.get(alert_type, 'Sustainability alert'),
+                'severity': 'CRITICAL',
+                'ecoscore': supplier.get('ecoscore'),
+                'risk_level': risks[alert_type],
+                'recommended_action': 'Immediate audit required',
+                'date': datetime.utcnow().isoformat()
             })
 
-        return {
-            'export_format': 'CSRD-E2/E3/E4',
-            'export_date': datetime.utcnow().isoformat(),
-            'suppliers': csrd_suppliers,
-            'summary': {
-                'total_suppliers': len(suppliers),
-                'compliant': compliant,
-                'review_required': review,
-                'critical_risk': critical
-            }
+        return jsonify({
+            'count': len(alerts),
+            'alerts': alerts,
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        logger.error(f"Error retrieving alerts: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# Export & Compliance Endpoints
+# ============================================================================
+
+@app.route('/api/v1/export/csrd', methods=['GET'])
+def export_csrd():
+    """Export all monitored suppliers in ESRS E2/E3/E4 format."""
+    try:
+        monitored = [s for s in SUPPLIERS_MAP.values() if s['type'] == 'monitored']
+
+        suppliers_by_zone = {}
+        for supplier in monitored:
+            zone = supplier['zone']
+            if zone not in suppliers_by_zone:
+                suppliers_by_zone[zone] = []
+            suppliers_by_zone[zone].append(supplier)
+
+        esrs_data = {
+            'metadata': {
+                'report_date': datetime.utcnow().isoformat(),
+                'reporting_standard': 'ESRS E2/E3/E4',
+                'data_source': 'Sentinel-2 Satellite Data',
+                'scope': 'Monitored suppliers across 3 zones',
+                'total_suppliers': len(monitored)
+            },
+            'esrs_e2_pollution': {
+                'title': 'Pollution Disclosure',
+                'kpis': [
+                    {
+                        'name': 'Average Pollution Proxy Score',
+                        'value': sum(
+                            ZONES_MAP[z].get('pollution_proxy', 0)
+                            for z in suppliers_by_zone.keys()
+                        ) / len(suppliers_by_zone) if suppliers_by_zone else 0,
+                        'scale': '0-100 (lower is better)',
+                        'description': 'Environmental degradation indicator from satellite data'
+                    }
+                ],
+                'suppliers': {zone: len(sups) for zone, sups in suppliers_by_zone.items()}
+            },
+            'esrs_e3_water': {
+                'title': 'Water & Marine Resources Disclosure',
+                'kpis': [
+                    {
+                        'name': 'Average Water Stress Index',
+                        'value': sum(
+                            ZONES_MAP[z].get('water_stress', 0)
+                            for z in suppliers_by_zone.keys()
+                        ) / len(suppliers_by_zone) if suppliers_by_zone else 0,
+                        'scale': '0-100 (lower is better)',
+                        'description': 'NDWI-based water availability assessment'
+                    }
+                ],
+                'critical_suppliers': len([s for s in monitored if s.get('status') == 'CRITICAL'])
+            },
+            'esrs_e4_biodiversity': {
+                'title': 'Biodiversity & Ecosystems Disclosure',
+                'kpis': [
+                    {
+                        'name': 'Average Vegetation Index (NDVI)',
+                        'value': sum(
+                            ZONES_MAP[z].get('ndvi', 0)
+                            for z in suppliers_by_zone.keys()
+                        ) / len(suppliers_by_zone) if suppliers_by_zone else 0,
+                        'scale': '-1 to 1 (higher indicates healthier vegetation)',
+                        'description': 'Normalized Difference Vegetation Index'
+                    },
+                    {
+                        'name': 'Deforestation Risk',
+                        'value': sum(
+                            ZONES_MAP[z].get('deforestation_risk', 0)
+                            for z in suppliers_by_zone.keys()
+                        ) / len(suppliers_by_zone) if suppliers_by_zone else 0,
+                        'scale': '0-100 (lower is better)',
+                        'description': 'Vegetation loss trend analysis'
+                    }
+                ],
+                'suppliers_by_status': {
+                    'compliant': len([s for s in monitored if s.get('status') == 'COMPLIANT']),
+                    'review': len([s for s in monitored if s.get('status') == 'REVIEW']),
+                    'critical': len([s for s in monitored if s.get('status') == 'CRITICAL'])
+                }
+            },
+            'detailed_supplier_data': [
+                {
+                    'supplier_id': s['id'],
+                    'name': s['name'],
+                    'zone': s['zone'],
+                    'ecoscore': s.get('ecoscore'),
+                    'status': s.get('status'),
+                    'audit_frequency': s.get('audit_frequency'),
+                    'zone_metrics': {
+                        'ndvi': ZONES_MAP[s['zone']].get('ndvi'),
+                        'ndwi': ZONES_MAP[s['zone']].get('ndwi'),
+                        'deforestation_risk': ZONES_MAP[s['zone']].get('deforestation_risk'),
+                        'water_stress': ZONES_MAP[s['zone']].get('water_stress'),
+                        'pollution_proxy': ZONES_MAP[s['zone']].get('pollution_proxy')
+                    }
+                }
+                for s in monitored
+            ]
         }
 
-
-def create_app(config_name: str = "development") -> Flask:
-    """
-    Application factory.
-
-    Args:
-        config_name: Configuration environment (development, production)
-
-    Returns:
-        Configured Flask app
-    """
-    app = Flask(__name__)
-    CORS(app)
-
-    # Load config
-    if config_name == "production":
-        app.config['DEBUG'] = False
-    else:
-        app.config['DEBUG'] = True
-
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
-    app.config['JSON_SORT_KEYS'] = False
-
-    # Initialize data manager
-    data_manager = DataManager()
-
-    @app.before_request
-    def load_data():
-        """Load data into request context."""
-        g.data_manager = data_manager
-
-    # Register blueprints with data manager
-    from .routes.scores import create_scores_bp
-    from .routes.alerts import create_alerts_bp
-    from .routes.export import create_export_bp
-
-    app.register_blueprint(create_scores_bp(data_manager))
-    app.register_blueprint(create_alerts_bp(data_manager))
-    app.register_blueprint(create_export_bp(data_manager))
-
-    # Health check
-    @app.route('/health', methods=['GET'])
-    def health():
-        """Health check endpoint with data status."""
-        scores = data_manager.load_scores()
-        suppliers = data_manager.load_suppliers()
-        return jsonify({
-            'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
-            'data_status': {
-                'scores_loaded': len(scores) > 0,
-                'suppliers_loaded': len(suppliers) > 0,
-                'total_suppliers': len(suppliers),
-                'scores_available': len(scores)
-            }
-        }), 200
-
-    # Root endpoint
-    @app.route('/', methods=['GET'])
-    def root():
-        """API root with version and capabilities."""
-        return jsonify({
-            'name': 'EcoTrace API',
-            'version': '1.0.0',
-            'description': 'AI-powered sustainability traceability for fashion supply chains',
-            'endpoints': {
-                'suppliers': '/api/v1/suppliers',
-                'supplier_detail': '/api/v1/suppliers/{id}',
-                'supplier_score': '/api/v1/suppliers/{id}/score',
-                'alerts': '/api/v1/alerts',
-                'export_csrd': '/api/v1/export/csrd',
-                'qr_page': '/api/v1/qr/{id}'
-            }
-        }), 200
-
-    # Error handlers
-    @app.errorhandler(404)
-    def not_found(error):
-        """Handle 404 errors."""
-        return jsonify({'error': 'Resource not found', 'status': 404}), 404
-
-    @app.errorhandler(500)
-    def server_error(error):
-        """Handle 500 errors."""
-        logger.error(f"Server error: {error}")
-        return jsonify({'error': 'Internal server error', 'status': 500}), 500
-
-    return app
+        return jsonify(esrs_data), 200
+    except Exception as e:
+        logger.error(f"Error exporting CSRD data: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
-if __name__ == "__main__":
-    app = create_app("development")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+# ============================================================================
+# Error Handlers
+# ============================================================================
+
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors."""
+    return jsonify({
+        'error': 'Endpoint not found',
+        'message': 'Check /api/v1/metadata for available endpoints'
+    }), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors."""
+    logger.error(f"Internal server error: {error}")
+    return jsonify({'error': 'Internal server error'}), 500
+
+
+# ============================================================================
+# Application Entry Point
+# ============================================================================
+
+def main():
+    """Initialize and run the Flask application."""
+    print("\n" + "="*80)
+    print("EcoScore Sustainability API")
+    print("="*80 + "\n")
+
+    if not load_scores_data():
+        print("[ERROR] Failed to load scores data. Exiting.")
+        return 1
+
+    print(f"[OK] Loaded {len(SUPPLIERS_MAP)} suppliers")
+    print(f"[OK] Loaded {len(ZONES_MAP)} zones")
+    print("\n[INFO] Starting Flask server...")
+    print("[INFO] API Documentation: http://localhost:5000/api/v1/metadata")
+    print("[INFO] Health Check: http://localhost:5000/health")
+    print("\n" + "="*80 + "\n")
+
+    app.run(
+        host='0.0.0.0',
+        port=5000,
+        debug=True,
+        use_reloader=False
+    )
+
+
+if __name__ == '__main__':
+    exit(main())
