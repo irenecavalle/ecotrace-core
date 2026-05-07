@@ -3,26 +3,23 @@
 
 FROM python:3.10-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install only API dependencies
-RUN pip install --no-cache-dir \
-    flask==2.3.0 \
-    flask-cors==4.0.0 \
-    gunicorn==21.2.0
+# Copy requirements first for better caching
+COPY requirements_api.txt .
 
-# Copy API code
-COPY src/api/ /app/src/api/
+# Install API dependencies
+RUN pip install --no-cache-dir -r requirements_api.txt
+
+# Copy source code
+COPY src/ ./src/
 
 # Copy pre-computed scores data
-COPY results/scores.json /app/results/scores.json
+COPY results/scores.json ./results/scores.json
 
-# Create necessary directories
-RUN mkdir -p /app/src/api && mkdir -p /app/results
-
-# Set Python path
-ENV PYTHONPATH=/app:$PYTHONPATH
+# Set Flask app and Python path
+ENV FLASK_APP=src/api/app.py
+ENV PYTHONPATH=/app
 
 # Expose port (will be overridden by Railway's PORT env var)
 EXPOSE 5000
@@ -32,4 +29,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-5000}/health')" || exit 1
 
 # Run with gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--worker-class", "sync", "--timeout", "30", "src.api.app:app"]
+CMD gunicorn --bind 0.0.0.0:$PORT --workers 2 --chdir /app src.api.app:app
