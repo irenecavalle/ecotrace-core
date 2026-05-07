@@ -3,7 +3,10 @@
     "dockerfilePath": "Dockerfile.api"
   },
   "deploy": {
-    "startCommand": "gunicorn --bind 0.0.0.0:$PORT src.api.app:app --workers 2 --worker-class sync --timeout 30",
+    "startCommand": "gunicorn --bind 0.0.0.0:$PORT --workers 2 src.api.app:app",
     "healthcheckPath": "/api/v1/metadata"
+  },
+  "variables": {
+    "FLASK_APP": "src/api/app.py"
   }
 }
