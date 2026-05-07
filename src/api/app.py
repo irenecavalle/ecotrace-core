@@ -131,6 +131,15 @@ def after_request(response):
 # Health & Metadata Endpoints
 # ============================================================================
 
+@app.route('/')
+def index():
+    """Root endpoint - service status."""
+    return jsonify({
+        'status': 'ok',
+        'service': 'EcoTrace API'
+    }), 200
+
+
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint."""

@@ -4,7 +4,8 @@
   },
   "deploy": {
     "startCommand": "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60",
-    "healthcheckPath": "/api/v1/metadata"
+    "healthcheckPath": "/",
+    "healthcheckTimeout": 60
   },
   "variables": {
     "FLASK_APP": "app.py",
