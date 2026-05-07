@@ -1,0 +1,9 @@
+{
+  "build": {
+    "dockerfilePath": "Dockerfile.api"
+  },
+  "deploy": {
+    "startCommand": "gunicorn --bind 0.0.0.0:$PORT src.api.app:app --workers 2 --worker-class sync --timeout 30",
+    "healthcheckPath": "/api/v1/metadata"
+  }
+}
