@@ -8,6 +8,7 @@ Loads data from results/scores.json on startup.
 
 import json
 import logging
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Any
@@ -31,13 +32,19 @@ SCORES_DATA = {}
 SUPPLIERS_MAP = {}
 ZONES_MAP = {}
 
-
-def load_scores_data():
-    """Load scores.json on application startup."""
+# Load data on app startup (before any requests)
+def _load_on_startup():
+    """Load scores data when app starts."""
     global SCORES_DATA, SUPPLIERS_MAP, ZONES_MAP
-
     try:
-        scores_path = Path(__file__).parent.parent.parent / 'results' / 'scores.json'
+        scores_path = os.path.join(os.path.dirname(__file__), '../../results/scores.json')
+        scores_path = os.path.abspath(scores_path)
+
+        print(f"\n[*] Loading scores from: {scores_path}")
+
+        if not os.path.exists(scores_path):
+            print(f"[ERROR] File not found: {scores_path}")
+            return False
 
         with open(scores_path, 'r') as f:
             SCORES_DATA = json.load(f)
@@ -45,12 +52,55 @@ def load_scores_data():
         SUPPLIERS_MAP = {s['id']: s for s in SCORES_DATA.get('suppliers', [])}
         ZONES_MAP = SCORES_DATA.get('zone_scores', {})
 
+        print(f"[OK] Loaded {len(SUPPLIERS_MAP)} suppliers")
+        print(f"[OK] Loaded {len(ZONES_MAP)} zones\n")
+
         logger.info(f"Loaded {len(SUPPLIERS_MAP)} suppliers from {scores_path}")
         logger.info(f"Loaded {len(ZONES_MAP)} zones")
 
         return True
     except Exception as e:
         logger.error(f"Failed to load scores data: {e}")
+        print(f"[ERROR] Failed to load scores data: {e}")
+        return False
+
+# Load data immediately
+_load_on_startup()
+
+
+def load_scores_data():
+    """Load scores.json on application startup."""
+    global SCORES_DATA, SUPPLIERS_MAP, ZONES_MAP
+
+    try:
+        # Use absolute path relative to project root
+        scores_path = os.path.join(os.path.dirname(__file__), '../../results/scores.json')
+        scores_path = os.path.abspath(scores_path)
+
+        print(f"\n[*] Loading scores from: {scores_path}")
+
+        if not os.path.exists(scores_path):
+            print(f"[ERROR] File not found: {scores_path}")
+            print(f"[DEBUG] Current __file__: {__file__}")
+            print(f"[DEBUG] Directory exists: {os.path.exists(os.path.dirname(scores_path))}")
+            return False
+
+        with open(scores_path, 'r') as f:
+            SCORES_DATA = json.load(f)
+
+        SUPPLIERS_MAP = {s['id']: s for s in SCORES_DATA.get('suppliers', [])}
+        ZONES_MAP = SCORES_DATA.get('zone_scores', {})
+
+        print(f"[OK] Loaded {len(SUPPLIERS_MAP)} suppliers")
+        print(f"[OK] Loaded {len(ZONES_MAP)} zones")
+
+        logger.info(f"Loaded {len(SUPPLIERS_MAP)} suppliers from {scores_path}")
+        logger.info(f"Loaded {len(ZONES_MAP)} zones")
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to load scores data: {e}")
+        print(f"[ERROR] Failed to load scores data: {e}")
         return False
 
 
