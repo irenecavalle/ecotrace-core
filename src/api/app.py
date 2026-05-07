@@ -3,7 +3,11 @@ EcoScore Sustainability API
 
 Complete Flask API for supplier sustainability monitoring and reporting.
 Provides real-time access to satellite-derived EcoScores and environmental metrics.
-Loads data from results/scores.json on startup.
+
+Data Loading Strategy:
+- Loads pre-computed results/scores.json on startup (NO Google Earth Engine credentials required)
+- If results/scores.json does not exist, the API will not start
+- All EcoScores and metrics are pre-calculated from satellite data
 """
 
 import json
@@ -34,13 +38,18 @@ ZONES_MAP = {}
 
 # Load data on app startup (before any requests)
 def _load_on_startup():
-    """Load scores data when app starts."""
+    """Load pre-computed scores data when app starts.
+
+    Loads results/scores.json (pre-calculated EcoScores and metrics).
+    Does NOT require Google Earth Engine credentials.
+    All data has been pre-computed from satellite imagery.
+    """
     global SCORES_DATA, SUPPLIERS_MAP, ZONES_MAP
     try:
         scores_path = os.path.join(os.path.dirname(__file__), '../../results/scores.json')
         scores_path = os.path.abspath(scores_path)
 
-        print(f"\n[*] Loading scores from: {scores_path}")
+        print(f"\n[*] Loading pre-computed scores from: {scores_path}")
 
         if not os.path.exists(scores_path):
             print(f"[ERROR] File not found: {scores_path}")
@@ -472,13 +481,17 @@ def main():
     print(f"[OK] Loaded {len(SUPPLIERS_MAP)} suppliers")
     print(f"[OK] Loaded {len(ZONES_MAP)} zones")
     print("\n[INFO] Starting Flask server...")
-    print("[INFO] API Documentation: http://localhost:5000/api/v1/metadata")
-    print("[INFO] Health Check: http://localhost:5000/health")
+
+    # Get port from environment variable, default to 5000
+    port = int(os.environ.get('PORT', 5000))
+    print(f"[INFO] Listening on port {port}")
+    print(f"[INFO] API Documentation: http://localhost:{port}/api/v1/metadata")
+    print(f"[INFO] Health Check: http://localhost:{port}/health")
     print("\n" + "="*80 + "\n")
 
     app.run(
         host='0.0.0.0',
-        port=5000,
+        port=port,
         debug=True,
         use_reloader=False
     )
