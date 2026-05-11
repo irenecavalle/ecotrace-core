@@ -452,12 +452,14 @@ curl http://localhost:5000/api/v1/suppliers/SUP001/score
 
 ## 📈 Results
 
-| Model | Metric | EcoTrace | Baseline |
+| Model | Metric | Result | Notes |
 |---|---|---|---|
-| Deforestation Detection | F1 / IOU | **0.87 / 0.81** | 0.71 / 0.63 |
-| Water Stress Classification | Accuracy / F1-macro | **84% / 0.79** | 61% / 0.54 |
-| Pollution Proxy | RMSE / Pearson r | **0.09 / 0.82** | 0.19 / 0.61 |
-| EcoScore vs Higg Index (n=42) | Pearson r | **0.79** (p<0.001) | — |
+| Deforestation (U-Net) | F1 / IOU | 0.00 / 0.00 | 2 epochs, 300 real patches — majority class collapse |
+| Water Stress (XGBoost) | Accuracy | Proof-of-concept | n=9 observations — statistically insufficient |
+| Pollution Proxy | Pearson r | N/A | Index-based proxy — no trained model in pilot |
+| EcoScore Pakistan | Zone score | 31.85 CRITICAL | Real Sentinel-2 Q1 2024 |
+| EcoScore China | Zone score | 43.12 REVIEW | Real Sentinel-2 Q1 2024 |
+| EcoScore Bangladesh | Zone score | 54.13 REVIEW | Real Sentinel-2 Q1 2024 |
 
 ---
 
