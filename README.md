@@ -451,6 +451,10 @@ curl http://localhost:5000/api/v1/suppliers/SUP001/score
 ---
 
 ## 📈 Results
+Quantitative metrics are reported only where statistically meaningful evaluation was possible. The U-Net collapsed to 
+majority-class prediction after 2 epochs on 300 real patches (F1=0.00). The XGBoost and pollution proxy models operated on n=9 observations — insufficient for meaningful accuracy reporting. The primary validated output is the zone-level 
+EcoScore derived from real Sentinel-2 Q1 2024 data, which confirmed Pakistan as CRITICAL and validated the satellite 
+signal against independent ground-truth literature (IWMI 2023, World Bank 2022).
 
 | Model | Metric | Result | Notes |
 |---|---|---|---|
