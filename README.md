@@ -38,8 +38,8 @@ EcoTrace uses **Copernicus satellite data (Sentinel-1/2)** + **AI** to independe
 | **AOIs** | Indus Basin (Pakistan) · Yangtze Delta (China) · Dhaka Region (Bangladesh) |
 | **EO Data** | Sentinel-2 L2A, Sentinel-1 GRD, MODIS MOD16A2, GRACE-FO |
 | **Time Range** | January 2019 – December 2024 (monthly composites) |
-| **Dashboard** | https://app.ecotrace.earth |
-| **Report** | [PAIBS_Report.docx](docs/PAIBS_Report.docx) |
+| **Dashboard** | [https://fabric-footprint-ai.lovable.app/] |
+| **Report** | [https://urledu-my.sharepoint.com/:w:/g/personal/lucia_tortajada_alumni_esade_edu/IQD_ANLMkzpMTqx2eNq6KiatAVb1hY5iKLXUPhQ5X2hngJ0?e=MYdtJG]|
 
 ### EcoScore Formula
 
